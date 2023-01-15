@@ -1,11 +1,8 @@
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 
 public class Main {
 
-    public static final Map<Integer, Integer> sizeToFreq = new HashMap<>();
+    public  static final Map<Integer, Integer> sizeToFreq = new HashMap<>();
 
 
     public static String generateRoute(String letters, int length) {
@@ -24,25 +21,49 @@ public class Main {
         } else map.put(i, 1);
     }
 
+    public static void mapMax(Map<Integer, Integer> map) {
+        System.out.println("Текущий лидер " + map.keySet().stream().max(Comparator.naturalOrder()).get());
+    }
+
 
     public static void main(String[] args) throws InterruptedException {
 
-        ArrayList<Thread> threadList = new ArrayList<>();
+        Thread threadMax = new Thread(() -> {
+            while (!Thread.interrupted()) {
+                synchronized (sizeToFreq) {
+                    try {
+                        sizeToFreq.wait();
+                    } catch (InterruptedException e) {
 
+                    }
+                    mapMax(sizeToFreq);
+                }
+            }
+        });
+
+        ArrayList<Thread> threadList = new ArrayList<>();
         for (int i = 0; i < 1000; i++) {
             threadList.add(new Thread(() -> {
                 int res = (int) generateRoute("RLRFR", 100).codePoints().filter(s -> s == 'R').count();
                 synchronized (sizeToFreq) {
                     mapPut(sizeToFreq, res);
+                    sizeToFreq.notify();
                 }
             }));
         }
+
         for (Thread thread : threadList) {
             thread.start();
         }
+
+        threadMax.start();
+
         for (Thread thread : threadList) {
             thread.join();
         }
+
+        threadMax.interrupt();
+
 
         for (Map.Entry<Integer, Integer> entry : sizeToFreq.entrySet()) {
             System.out.println(entry.getKey() + " (" + entry.getValue() + " раз)");
